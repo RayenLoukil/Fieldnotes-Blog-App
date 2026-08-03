@@ -14,4 +14,7 @@ class PostResponse(PostBase):
     id: int
     id_user: int
     created_at : datetime  = Field(default_factory=datetime.now)
-    
+
+class PostUpdate(BaseModel):
+    title: str | None = Field( default=None, min_length=3, max_length=100)
+    content: str | None = Field( default=None, min_length=3, max_length=100)
