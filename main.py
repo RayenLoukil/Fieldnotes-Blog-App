@@ -1,7 +1,7 @@
 from fastapi import FastAPI , HTTPException, status
 
 ## models + schemas + database
-from schemas import PostCreate , PostResponse, PostUpdate
+from schemas import PostCreate , PostResponse, PostUpdate , UserCreate, UserResponse
 import models 
 from database import get_db , engine , Base
 
@@ -77,3 +77,33 @@ def delete_post(id:int , db: Annotated[Session , Depends(get_db)]):
     db.delete(post)
     db.commit()
     return {"message":"post deleted successfully"}
+
+
+
+# get all users
+@app.get("/api/users" ,  response_model=list[UserResponse])
+def get_users(db : Annotated[Session , Depends(get_db)]):
+    result = db.execute(select(models.User))
+    users = result.scalars().all()
+    return users    
+
+# get user by id 
+@app.get("/api/users/{id}" ,  response_model=UserResponse)
+def get_user_by_id(id:int , db : Annotated[Session , Depends(get_db)]):
+    result = db.execute(select(models.User).where(models.User.id ==id ))
+    user = result.scalars().first()
+    if user:
+        return user
+    else :
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
+
+#create a user
+@app.post("/api/users" , response_model=UserResponse)
+def create_user(user:UserCreate , db : Annotated[Session , Depends(get_db)]):
+    new_user= models.User(username = user.username , email = user.email )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+
