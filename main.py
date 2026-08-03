@@ -51,7 +51,7 @@ def create_post(post : PostCreate  , db:Annotated[Session , Depends(get_db)]):
     return new_post
 
 #update post
-@app.patch("/api/posts" , response_model=PostResponse)
+@app.patch("/api/posts/{id}" , response_model=PostResponse)
 def update_post(id:int , updated_post:PostUpdate , db:Annotated[Session , Depends(get_db)]):
     result = db.execute(select(models.Post).where(models.Post.id == id))
     post = result.scalars().first()
@@ -65,3 +65,15 @@ def update_post(id:int , updated_post:PostUpdate , db:Annotated[Session , Depend
     db.commit()
     db.refresh(post)
     return post
+
+#delete a post
+@app.delete("/api/posts/{id}" )
+def delete_post(id:int , db: Annotated[Session , Depends(get_db)]):
+    result = db.execute(select(models.Post).where(models.Post.id == id))
+    post = result.scalars().first()
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    
+    db.delete(post)
+    db.commit()
+    return {"message":"post deleted successfully"}
