@@ -31,3 +31,7 @@ class UserResponse(UserBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
     
+class UserUpdate(BaseModel):
+    username: str | None = Field( default=None, min_length=3, max_length=50)
+    email:str | None = Field( default=None, min_length=5, max_length=100)
+    
