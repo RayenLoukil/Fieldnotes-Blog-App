@@ -11,6 +11,8 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
+
+
 ## Create the database tables
 Base.metadata.create_all(bind=engine)
 
@@ -42,8 +44,12 @@ def get_post(id_post:int , db:Annotated[Session , Depends(get_db)]):
     return post
         
 #create post
-@app.post("/api/posts" , response_model=PostResponse)
+@app.post("/api/posts" , response_model=PostResponse , status_code=status.HTTP_201_CREATED)
 def create_post(post : PostCreate  , db:Annotated[Session , Depends(get_db)]):
+    user = db.execute(select(models.User).where(models.User.id == post.id_user)).scalars().first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    
     new_post = models.Post(title=post.title , content=post.content , id_user=post.id_user  )
     db.add(new_post)
     db.commit()
@@ -67,7 +73,7 @@ def update_post(id:int , updated_post:PostUpdate , db:Annotated[Session , Depend
     return post
 
 #delete a post
-@app.delete("/api/posts/{id}" )
+@app.delete("/api/posts/{id}", status_code=status.HTTP_204_NO_CONTENT )
 def delete_post(id:int , db: Annotated[Session , Depends(get_db)]):
     result = db.execute(select(models.Post).where(models.Post.id == id))
     post = result.scalars().first()
@@ -98,7 +104,7 @@ def get_user_by_id(id:int , db : Annotated[Session , Depends(get_db)]):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
 
 #create a user
-@app.post("/api/users" , response_model=UserResponse)
+@app.post("/api/users" , response_model=UserResponse , status_code=status.HTTP_201_CREATED)
 def create_user(user:UserCreate , db : Annotated[Session , Depends(get_db)]):
     existing = db.execute(
         select(models.User).where(
@@ -158,7 +164,7 @@ def update_user(id: int, user_update: UserUpdate, db: Annotated[Session, Depends
 
 
 #delete a user
-@app.delete("/api/users/{id}" )
+@app.delete("/api/users/{id}" , status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(id:int , db: Annotated[Session , Depends(get_db)]):
     result = db.execute(select(models.User).where(models.User.id == id))
     user = result.scalars().first()
@@ -168,3 +174,61 @@ def delete_user(id:int , db: Annotated[Session , Depends(get_db)]):
     db.delete(user)
     db.commit()
     return {"message":"user deleted successfully"}
+
+
+
+
+
+
+#HTTP Exception Handler 
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi import Request
+
+#Validation Error Handler
+from fastapi.exceptions import RequestValidationError 
+
+
+# Global HTTP Exception Handler
+@app.exception_handler(StarletteHTTPException)
+def http_exception_handler(request: Request, exception: StarletteHTTPException):
+    return JSONResponse(
+        status_code=exception.status_code,
+        content={
+            "error": {
+                "message": exception.detail,
+                "status_code": exception.status_code
+            }
+        }
+    )
+
+
+# Global Validation Error Handler
+@app.exception_handler(RequestValidationError)
+def validation_exception_handler(request: Request, exception: RequestValidationError):
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": {
+                "message": "Validation failed",
+                "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "details": exception.errors()
+            }
+        }
+    )
+
+
+# Global Unexpected Error Handler
+@app.exception_handler(Exception)
+def global_exception_handler(request: Request, exception: Exception):
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": {
+                "message": "Internal server error",
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR
+            }
+        }
+    )
+    
+    
