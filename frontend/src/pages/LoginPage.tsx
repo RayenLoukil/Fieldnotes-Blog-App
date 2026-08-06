@@ -10,7 +10,8 @@ import * as z from 'zod';
 import { BookOpen, Key, AlertTriangle } from 'lucide-react';
 
 const loginSchema = z.object({
-  username: z.string().min(1, "Please enter your username"),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(1, 'Please enter your password'),
 });
 
 type LoginFormInput = z.infer<typeof loginSchema>;
@@ -22,17 +23,17 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormInput>({
-    resolver: zodResolver(loginSchema)
+    resolver: zodResolver(loginSchema),
   });
 
   const onSubmit = async (data: LoginFormInput) => {
     setLoading(true);
     setApiError(null);
     try {
-      await login(data.username);
+      await login(data.email, data.password);
       navigate('/');
     } catch (err: any) {
-      setApiError(err.message);
+      setApiError(err?.error?.message || 'Incorrect email or password');
     } finally {
       setLoading(false);
     }
@@ -43,7 +44,7 @@ export const LoginPage: React.FC = () => {
       <div className="text-center mb-8">
         <BookOpen className="h-12 w-12 text-steel-500 mx-auto mb-3" />
         <h1 className="text-3xl font-extrabold tracking-tight">Log into Fieldnotes</h1>
-        <p className="text-sm text-gray-500 mt-1">Authenticate against your SQLite user directory</p>
+        <p className="text-sm text-gray-500 mt-1">Sign in with your registered email and password</p>
       </div>
 
       <Card className="p-6">
@@ -55,11 +56,19 @@ export const LoginPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <Input 
-            label="Username" 
-            placeholder="e.g. corey_schafer" 
-            {...register('username')} 
-            error={errors.username?.message} 
+          <Input
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            {...register('email')}
+            error={errors.email?.message}
+          />
+          <Input
+            label="Password"
+            type="password"
+            placeholder="••••••••"
+            {...register('password')}
+            error={errors.password?.message}
           />
 
           <Button type="submit" className="w-full justify-center gap-1.5 mt-2" isLoading={loading}>

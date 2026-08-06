@@ -10,30 +10,35 @@ import * as z from 'zod';
 import { UserPlus, BookOpen, AlertTriangle } from 'lucide-react';
 
 const signupSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters").max(50),
-  email: z.string().email("Please enter a valid email address"),
+  username: z.string().min(3, 'Username must be at least 3 characters').max(50),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
 });
 
 type SignupFormInput = z.infer<typeof signupSchema>;
 
 export const RegisterPage: React.FC = () => {
-  const signup = useAuthStore((state) => state.signup);
+  const register_ = useAuthStore((state) => state.register);
   const navigate = useNavigate();
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<SignupFormInput>({
-    resolver: zodResolver(signupSchema)
+    resolver: zodResolver(signupSchema),
   });
 
   const onSubmit = async (data: SignupFormInput) => {
     setLoading(true);
     setApiError(null);
     try {
-      await signup(data.username, data.email);
+      await register_(data.username, data.email, data.password);
       navigate('/');
     } catch (err: any) {
-      setApiError(err.message);
+      setApiError(err?.error?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -56,19 +61,10 @@ export const RegisterPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <Input 
-            label="Username" 
-            placeholder="e.g. corey_schafer" 
-            {...register('username')} 
-            error={errors.username?.message} 
-          />
-
-          <Input 
-            label="Email Address" 
-            placeholder="corey@fieldnotes.io" 
-            {...register('email')} 
-            error={errors.email?.message} 
-          />
+          <Input label="Username" placeholder="e.g. corey_schafer" {...register('username')} error={errors.username?.message} />
+          <Input label="Email Address" type="email" placeholder="corey@fieldnotes.io" {...register('email')} error={errors.email?.message} />
+          <Input label="Password" type="password" placeholder="At least 8 characters" {...register('password')} error={errors.password?.message} />
+          <Input label="Confirm Password" type="password" {...register('confirmPassword')} error={errors.confirmPassword?.message} />
 
           <Button type="submit" className="w-full justify-center gap-1.5 mt-2" isLoading={loading}>
             <UserPlus className="h-4 w-4" />

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { BookOpen, Moon, Sun, Users, PlusCircle, LogOut, User } from 'lucide-react';
+import { BookOpen, Moon, Sun, PlusCircle, LogOut } from 'lucide-react';
 import { Button } from './ui/Button';
 
 interface NavbarProps {
@@ -31,25 +31,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onCreatePostClick }) => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-40 bg-steel-500 text-white shadow-md">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-        
-        {/* Brand */}
+
         <Link to="/" className="flex items-center gap-2 text-xl font-bold tracking-tight text-white hover:opacity-90">
           <BookOpen className="h-6 w-6" />
           <span>Fieldnotes</span>
         </Link>
 
-        {/* Action Controls */}
         <div className="flex items-center gap-5">
           {isAuthenticated && (
             <div className="flex items-center gap-4 text-sm font-medium">
-              <NavLink 
-                to="/" 
+              <NavLink
+                to="/"
                 className={({ isActive }) => `hover:text-steel-100 transition-colors ${isActive ? 'underline underline-offset-4 decoration-2 font-bold text-white' : 'text-steel-100'}`}
               >
                 Feed
               </NavLink>
-              <NavLink 
-                to="/users" 
+              <NavLink
+                to="/users"
                 className={({ isActive }) => `hover:text-steel-100 transition-colors ${isActive ? 'underline underline-offset-4 decoration-2 font-bold text-white' : 'text-steel-100'}`}
               >
                 Authors
@@ -61,7 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onCreatePostClick }) => {
 
           <div className="flex items-center gap-3">
             {isAuthenticated && (
-              <Button 
+              <Button
                 onClick={onCreatePostClick}
                 className="bg-white/10 hover:bg-white/20 border border-white/20 text-white gap-2"
                 size="sm"
@@ -74,17 +72,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onCreatePostClick }) => {
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="p-2 hover:bg-steel-600 rounded-full transition-colors text-white"
-              title="Toggle view theme"
             >
               {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
 
             {isAuthenticated && currentUser && (
               <>
-                <Link 
-                  to={`/users/${currentUser.id}`} 
+                {/* Links to /account — NOT /users/:id */}
+                <Link
+                  to="/account"
                   className="flex items-center gap-2 hover:bg-steel-600 p-1.5 rounded-full transition-colors"
-                  title="My Profile Settings"
+                  title="My Account Settings"
                 >
                   <div className="w-8 h-8 rounded-full bg-steel-100 text-steel-700 font-extrabold flex items-center justify-center text-sm shadow-sm">
                     {currentUser.username.substring(0, 2).toUpperCase()}
@@ -94,7 +92,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onCreatePostClick }) => {
                 <button
                   onClick={handleLogout}
                   className="p-2 hover:bg-steel-600 rounded-full transition-colors text-white"
-                  title="Log Out Session"
+                  title="Log Out"
                 >
                   <LogOut className="h-5 w-5" />
                 </button>

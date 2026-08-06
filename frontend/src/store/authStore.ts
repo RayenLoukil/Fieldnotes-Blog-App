@@ -4,60 +4,65 @@ import { User } from '@/types/api';
 import { api } from '@/lib/api';
 
 interface AuthState {
+  token: string | null;
   currentUser: User | null;
   isAuthenticated: boolean;
-  login: (username: string) => Promise<void>;
-  signup: (username: string, email: string) => Promise<User>;
-  updateProfileState: (updatedUser: User) => void;
+  isInitializing: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  checkAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      token: null,
       currentUser: null,
       isAuthenticated: false,
+      isInitializing: true,
 
-      login: async (username: string) => {
-        try {
-          // Fetch existing users to verify the account
-          const { data: users } = await api.get<User[]>('/users');
-          const matchedUser = users.find(
-            (u) => u.username.toLowerCase() === username.toLowerCase()
-          );
+      login: async (email: string, password: string) => {
+        // The backend expects OAuth2PasswordRequestForm: form-urlencoded, NOT JSON
+        const params = new URLSearchParams();
+        params.append('username', email); // backend treats "username" field as email
+        params.append('password', password);
 
-          if (!matchedUser) {
-            throw new Error("Username not found. Please register first.");
-          }
+        const { data } = await api.post('/users/token', params, {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        });
 
-          set({ currentUser: matchedUser, isAuthenticated: true });
-        } catch (error: any) {
-          const errMsg = error?.response?.data?.error?.message || error.message || "Login failed";
-          throw new Error(errMsg);
-        }
+        set({ token: data.access_token });
+        await get().checkAuth(); // fetch and store the real user object
       },
 
-      signup: async (username: string, email: string) => {
-        try {
-          const { data: newUser } = await api.post<User>('/users', { username, email });
-          set({ currentUser: newUser, isAuthenticated: true });
-          return newUser;
-        } catch (error: any) {
-          const errMsg = error?.response?.data?.error?.message || "Registration failed";
-          throw new Error(errMsg);
-        }
-      },
-
-      updateProfileState: (updatedUser: User) => {
-        set({ currentUser: updatedUser });
+      register: async (username: string, email: string, password: string) => {
+        await api.post('/users', { username, email, password }); // this one IS JSON
+        await get().login(email, password); // auto-login right after registering
       },
 
       logout: () => {
-        set({ currentUser: null, isAuthenticated: false });
+        set({ token: null, currentUser: null, isAuthenticated: false });
+      },
+
+      checkAuth: async () => {
+        const token = get().token;
+        if (!token) {
+          set({ isAuthenticated: false, currentUser: null, isInitializing: false });
+          return;
+        }
+        try {
+          const { data } = await api.get<User>('/users/me');
+          set({ currentUser: data, isAuthenticated: true, isInitializing: false });
+        } catch {
+          // token exists but is expired/invalid — clear everything
+          set({ token: null, currentUser: null, isAuthenticated: false, isInitializing: false });
+        }
       },
     }),
     {
-      name: 'fieldnotes-auth-session',
+      name: 'fieldnotes-auth',
+      partialize: (state) => ({ token: state.token }), // ONLY persist the token, not currentUser
     }
   )
 );
