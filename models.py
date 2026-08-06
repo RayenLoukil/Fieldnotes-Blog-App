@@ -21,5 +21,10 @@ class User(Base):
     id : Mapped[int] = mapped_column (Integer , primary_key=True , index=True)
     username : Mapped[str] = mapped_column (String(50) , unique=True)
     email : Mapped[str] = mapped_column (String(100) , unique=True)
+    
+    password_hash : Mapped[str] = mapped_column (String(200) , nullable=False)
+    
+    
+    
 
     posts : Mapped[list[Post]] = relationship(back_populates="user" , cascade="all, delete-orphan")
