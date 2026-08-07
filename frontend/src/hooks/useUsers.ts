@@ -47,10 +47,30 @@ export const useUsers = () => {
     },
   });
 
+
+const useUploadPicture = (id: number) => useMutation({
+  mutationFn: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.patch<UserPrivate>(`/users/${id}/picture`, formData);
+    return data;
+  },
+  onSuccess: (data) => {
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+    queryClient.invalidateQueries({ queryKey: ['users', id] });
+    queryClient.invalidateQueries({ queryKey: ['posts'] });
+    updateProfileState(data);
+  },
+});
+
+
   return {
     useGetUsers,
     useGetUser,
     useUpdateUser,
     useDeleteUser,
+    useUploadPicture 
   };
 };
+
+

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUsers } from '@/hooks/useUsers';
 import { Card } from '@/components/ui/Card';
+import { Avatar } from '@/components/ui/Avatar';
 import { Link } from 'react-router-dom';
 import { Users, Mail } from 'lucide-react';
 
@@ -23,9 +24,7 @@ export const UsersPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {users?.map((user) => (
           <Card key={user.id} className="p-6 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-steel-100 dark:bg-zinc-800 text-steel-700 dark:text-zinc-300 font-bold flex items-center justify-center text-sm shadow-inner">
-              {user.username.substring(0, 2).toUpperCase()}
-            </div>
+            <Avatar username={user.username} imagePath={user.image_path} size="md" />
             <div>
               <Link to={`/users/${user.id}`} className="font-bold text-gray-900 dark:text-zinc-100 hover:text-steel-500 hover:underline">
                 {user.username}

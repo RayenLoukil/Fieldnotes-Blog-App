@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { BookOpen, Moon, Sun, PlusCircle, LogOut } from 'lucide-react';
 import { Button } from './ui/Button';
+import { Avatar } from './ui/Avatar';
 
 interface NavbarProps {
   onCreatePostClick: () => void;
@@ -84,9 +85,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onCreatePostClick }) => {
                   className="flex items-center gap-2 hover:bg-steel-600 p-1.5 rounded-full transition-colors"
                   title="My Account Settings"
                 >
-                  <div className="w-8 h-8 rounded-full bg-steel-100 text-steel-700 font-extrabold flex items-center justify-center text-sm shadow-sm">
-                    {currentUser.username.substring(0, 2).toUpperCase()}
-                  </div>
+                  <Avatar username={currentUser.username} imagePath={currentUser.image_path} size="sm" />
                 </Link>
 
                 <button

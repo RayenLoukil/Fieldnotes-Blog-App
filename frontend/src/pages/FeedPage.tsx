@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { usePosts } from '@/hooks/usePosts';
 import { Card } from '@/components/ui/Card';
+import { Avatar } from '@/components/ui/Avatar';
 import { AlertCircle, Calendar, MessageSquare, Terminal } from 'lucide-react';
 
 export const FeedPage: React.FC = () => {
@@ -60,9 +61,7 @@ export const FeedPage: React.FC = () => {
               <article className="flex flex-col sm:flex-row items-start gap-4">
                 
                 <Link to={`/users/${post.user?.id}`} className="flex-shrink-0">
-                  <div className="w-12 h-12 rounded-full bg-steel-100 dark:bg-zinc-800 text-steel-700 dark:text-steel-300 font-extrabold flex items-center justify-center text-sm shadow-inner border border-gray-100 dark:border-zinc-750 hover:border-steel-500 transition-colors">
-                    {post.user?.username?.substring(0, 2).toUpperCase() || "UN"}
-                  </div>
+                  <Avatar username={post.user?.username || 'UN'} imagePath={post.user?.image_path} size="md" />
                 </Link>
 
                 <div className="flex-grow">

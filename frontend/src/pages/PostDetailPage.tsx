@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { usePosts } from '@/hooks/usePosts';
 import { useAuthStore } from '@/store/authStore';
 import { Card } from '@/components/ui/Card';
+import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Input } from '@/components/ui/Input';
@@ -71,9 +72,7 @@ export const PostDetailPage: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 dark:border-zinc-800 pb-4 mb-4">
           <div className="flex items-center gap-4">
             <Link to={`/users/${post.user?.id}`}>
-              <div className="w-12 h-12 rounded-full bg-steel-100 dark:bg-zinc-800 text-steel-700 dark:text-steel-300 font-extrabold flex items-center justify-center text-sm shadow-inner border border-gray-100">
-                {post.user?.username.substring(0, 2).toUpperCase()}
-              </div>
+              <Avatar username={post.user?.username || 'UN'} imagePath={post.user?.image_path} size="md" />
             </Link>
             <div>
               <div>

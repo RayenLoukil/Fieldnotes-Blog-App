@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
+export const API_ORIGIN = 'http://localhost:8000';
+
 export const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: `${API_ORIGIN}/api`,
 });
 
 // Attach the JWT to every outgoing request automatically

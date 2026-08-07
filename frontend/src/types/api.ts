@@ -1,6 +1,8 @@
 export interface UserPublic {
   id: number;
   username: string;
+  image_file: string | null;
+  image_path: string;
 }
 
 export interface UserPrivate extends UserPublic {

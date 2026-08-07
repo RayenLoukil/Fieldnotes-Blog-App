@@ -36,6 +36,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
+Path("static/profile_pics").mkdir(parents=True, exist_ok=True)
+Path("media/profile_pics").mkdir(parents=True, exist_ok=True)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/media", StaticFiles(directory="media"), name="media")
+
+
 
 @app.get("/api/health", tags=["System"])
 def health_check():

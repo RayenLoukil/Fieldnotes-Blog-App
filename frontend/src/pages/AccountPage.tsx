@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useUsers } from '@/hooks/useUsers';
@@ -11,7 +11,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Link } from 'react-router-dom';
-import { User, Settings, Trash, Terminal, Calendar, Mail, Edit } from 'lucide-react';
+import { User, Settings, Trash, Terminal, Calendar, Mail, Edit, Camera } from 'lucide-react';
+import { API_ORIGIN } from '@/lib/api';
 
 const profileUpdateSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3').max(50),
@@ -23,7 +24,7 @@ type ProfileFormInput = z.infer<typeof profileUpdateSchema>;
 export const AccountPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, logout, checkAuth } = useAuthStore();
-  const { useUpdateUser, useDeleteUser } = useUsers();
+  const { useUpdateUser, useDeleteUser, useUploadPicture } = useUsers();
   const { useGetPosts } = usePosts();
 
   const { data: posts } = useGetPosts();
@@ -32,6 +33,27 @@ export const AccountPage: React.FC = () => {
   // Only runs if currentUser exists (guaranteed by ProtectedRoute)
   const updateMutation = useUpdateUser(currentUser!.id);
   const deleteMutation = useDeleteUser();
+  const uploadMutation = useUploadPicture(currentUser!.id);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_SIZE_BYTES = 5 * 1024 * 1024;
+
+  const onFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
+    }
+    if (file.size > MAX_SIZE_BYTES) {
+      alert('Image must be smaller than 5MB.');
+      return;
+    }
+
+    uploadMutation.mutate(file);
+  };
 
   // Form always seeded from currentUser (UserPrivate — has email)
   const { register, handleSubmit, formState: { errors } } = useForm<ProfileFormInput>({
@@ -74,8 +96,12 @@ export const AccountPage: React.FC = () => {
       <Card className="p-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-            <div className="w-16 h-16 rounded-full bg-steel-500 text-white font-extrabold flex items-center justify-center text-2xl shadow-md border-2 border-white dark:border-zinc-800">
-              {currentUser.username.substring(0, 2).toUpperCase()}
+            <div className="w-16 h-16 rounded-full overflow-hidden shadow-md border-2 border-white dark:border-zinc-800">
+              <img
+                src={`${API_ORIGIN}${currentUser.image_path}`}
+                alt={currentUser.username}
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
               <h1 className="text-2xl font-bold flex items-center justify-center sm:justify-start gap-1">
@@ -160,6 +186,38 @@ export const AccountPage: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         title="Account Settings"
       >
+        <div className="flex flex-col items-center mb-6">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-white dark:border-zinc-800 shadow-md"
+            disabled={uploadMutation.isPending}
+          >
+            <img
+              src={`${API_ORIGIN}${currentUser!.image_path}`}
+              alt={currentUser!.username}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+              <Camera className="h-6 w-6 text-white" />
+            </div>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onFileSelected}
+          />
+          {uploadMutation.isPending && (
+            <p className="text-xs text-gray-500 mt-2">Uploading...</p>
+          )}
+          {uploadMutation.isError && (
+            <p className="text-xs text-red-500 mt-2">
+              {(uploadMutation.error as any)?.error?.message || 'Upload failed. Try a different image.'}
+            </p>
+          )}
+        </div>
         <form onSubmit={handleSubmit(onProfileUpdate)}>
           <Input
             label="Username"

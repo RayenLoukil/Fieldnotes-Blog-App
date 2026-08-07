@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useUsers } from '@/hooks/useUsers';
 import { usePosts } from '@/hooks/usePosts';
 import { Card } from '@/components/ui/Card';
+import { Avatar } from '@/components/ui/Avatar';
 import { Terminal, Calendar, User as UserIcon } from 'lucide-react';
 
 export const UserProfilePage: React.FC = () => {
@@ -32,9 +33,7 @@ export const UserProfilePage: React.FC = () => {
       {/* Public Profile Header — no email, no settings button */}
       <Card className="p-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-steel-500 text-white font-extrabold flex items-center justify-center text-2xl shadow-md border-2 border-white dark:border-zinc-800">
-            {user.username.substring(0, 2).toUpperCase()}
-          </div>
+          <Avatar username={user.username} imagePath={user.image_path} size="lg" />
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-1">
               <UserIcon className="h-5 w-5 text-steel-500" />

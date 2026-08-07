@@ -233,3 +233,41 @@ def delete_user(
 
     db.delete(user)
     db.commit()
+    
+    
+    
+from fastapi import UploadFile
+from PIL import UnidentifiedImageError
+from image_utils import delete_profile_image, process_profile_image
+from config import settings
+
+@router.patch("/{id}/picture", response_model=UserPrivate)
+def upload_profile_picture(
+    id: int,
+    file: UploadFile,
+    current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+):
+    if current_user.id != id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this user's picture")
+
+    content = file.file.read()
+    if len(content) > settings.max_upload_size_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {settings.max_upload_size_bytes // (1024*1024)}MB",
+        )
+
+    try:
+        new_filename = process_profile_image(content)
+    except UnidentifiedImageError as err:
+        raise HTTPException(status_code=400, detail="Invalid image file.") from err
+
+    old_filename = current_user.image_file
+    current_user.image_file = new_filename
+    db.commit()
+    db.refresh(current_user)
+
+    if old_filename:
+        delete_profile_image(old_filename)
+    return current_user
