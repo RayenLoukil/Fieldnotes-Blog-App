@@ -25,12 +25,16 @@ router = APIRouter()
 # Public — no authentication required
 # Anyone can read the feed
 # ---------------------------------------------------------
+from sqlalchemy.orm import selectinload
+
 @router.get("", response_model=list[PostResponse])
 def get_posts(db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Post))
-    posts = result.scalars().all()
-    return posts
-
+    result = db.execute(
+        select(models.Post)
+        .options(selectinload(models.Post.user))   # <-- eager load
+        .order_by(models.Post.created_at.desc())
+    )
+    return result.scalars().all()
 
 # ---------------------------------------------------------
 # GET /{id} — get a single post
@@ -38,15 +42,15 @@ def get_posts(db: Annotated[Session, Depends(get_db)]):
 # ---------------------------------------------------------
 @router.get("/{id}", response_model=PostResponse)
 def get_post(id: int, db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Post).where(models.Post.id == id))
+    result = db.execute(
+        select(models.Post)
+        .options(selectinload(models.Post.user))
+        .where(models.Post.id == id)
+    )
     post = result.scalars().first()
     if not post:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     return post
-
 
 # ---------------------------------------------------------
 # POST — create a post

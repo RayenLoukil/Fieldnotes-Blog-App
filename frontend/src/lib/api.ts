@@ -14,13 +14,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// If any request comes back 401 (expired/invalid token), force logout
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const hadAuthHeader = Boolean(error.config?.headers?.Authorization);
+
+    if (status === 401 && hadAuthHeader) {
       useAuthStore.getState().logout();
     }
+
     const errorData = error.response?.data;
     return Promise.reject(errorData || { error: { message: 'Network connection error' } });
   }

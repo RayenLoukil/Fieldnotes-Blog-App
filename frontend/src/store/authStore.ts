@@ -1,17 +1,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User } from '@/types/api';
+import { UserPrivate } from '@/types/api';
 import { api } from '@/lib/api';
 
 interface AuthState {
   token: string | null;
-  currentUser: User | null;
+  currentUser: UserPrivate | null;
   isAuthenticated: boolean;
   isInitializing: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
+  updateProfileState: (user: UserPrivate) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -52,12 +53,16 @@ export const useAuthStore = create<AuthState>()(
           return;
         }
         try {
-          const { data } = await api.get<User>('/users/me');
+          const { data } = await api.get<UserPrivate>('/users/me');
           set({ currentUser: data, isAuthenticated: true, isInitializing: false });
         } catch {
           // token exists but is expired/invalid — clear everything
           set({ token: null, currentUser: null, isAuthenticated: false, isInitializing: false });
         }
+      },
+
+      updateProfileState: (user: UserPrivate) => {
+        set({ currentUser: user });
       },
     }),
     {

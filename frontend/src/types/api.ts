@@ -1,6 +1,9 @@
-export interface User {
+export interface UserPublic {
   id: number;
   username: string;
+}
+
+export interface UserPrivate extends UserPublic {
   email: string;
 }
 
@@ -9,7 +12,7 @@ export interface Post {
   title: string;
   content: string;
   created_at: string;
-  user: User; // Nested relationship
+  user: UserPublic;
 }
 
 export interface UserCreate {
