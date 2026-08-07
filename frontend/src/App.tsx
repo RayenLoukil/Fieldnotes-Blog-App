@@ -51,7 +51,7 @@ const AppContent: React.FC = () => {
   const onCreatePostSubmit = (data: CreatePostInput) => {
     if (!currentUser) return;
     createMutation.mutate(
-      { title: data.title, content: data.content, id_user: currentUser.id },
+      { title: data.title, content: data.content},
       { onSuccess: () => { setIsWriteOpen(false); reset(); } }
     );
   };

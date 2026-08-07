@@ -31,7 +31,7 @@ class PostBase(BaseModel):
     content: str = Field(min_length=10)
     
 class PostCreate(PostBase):
-    id_user:int
+    pass
 
 class PostResponse(PostBase):
     model_config = ConfigDict(from_attributes=True)

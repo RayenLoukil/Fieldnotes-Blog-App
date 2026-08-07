@@ -4,6 +4,16 @@ from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
 from config import settings
 
+## for Authorization
+from typing import Annotated
+from fastapi import Depends, HTTPException, status 
+from sqlalchemy import select
+from sqlalchemy.orm import Session 
+import models 
+from database import get_db
+
+
+
 password_hash = PasswordHash.recommended()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/users/token")
@@ -35,3 +45,45 @@ def verify_access_token(token: str) -> str | None:
         return None
     else:
         return payload.get("sub")
+    
+    
+    
+# get current user def
+
+def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(get_db)],) -> models.User:
+    
+    user_id = verify_access_token(token)
+
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = db.execute(
+        select(models.User).where(models.User.id == user_id)
+    ).scalars().first()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
+CurrentUser = Annotated[models.User, Depends(get_current_user)]

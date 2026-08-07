@@ -25,7 +25,6 @@ export interface UserUpdate {
 export interface PostCreate {
   title: string;
   content: string;
-  id_user: number;
 }
 
 export interface PostUpdate {
