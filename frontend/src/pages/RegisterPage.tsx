@@ -61,10 +61,10 @@ export const RegisterPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <Input label="Username" placeholder="e.g. corey_schafer" {...register('username')} error={errors.username?.message} />
-          <Input label="Email Address" type="email" placeholder="corey@fieldnotes.io" {...register('email')} error={errors.email?.message} />
+          <Input label="Username" placeholder="e.g. john_doe" {...register('username')} error={errors.username?.message} />
+          <Input label="Email Address" type="email" placeholder="you@example.com" {...register('email')} error={errors.email?.message} />
           <Input label="Password" type="password" placeholder="At least 8 characters" {...register('password')} error={errors.password?.message} />
-          <Input label="Confirm Password" type="password" {...register('confirmPassword')} error={errors.confirmPassword?.message} />
+          <Input label="Confirm Password" type="password" placeholder="Re-enter your password" {...register('confirmPassword')} error={errors.confirmPassword?.message} />
 
           <Button type="submit" className="w-full justify-center gap-1.5 mt-2" isLoading={loading}>
             <UserPlus className="h-4 w-4" />
