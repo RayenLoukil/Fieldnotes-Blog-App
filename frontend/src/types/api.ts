@@ -17,6 +17,14 @@ export interface Post {
   user: UserPublic;
 }
 
+export interface PaginatedPosts {
+  posts: Post[];
+  total: number;
+  skip: number;
+  limit: number;
+  has_more: boolean;
+}
+
 export interface UserCreate {
   username: string;
   email: string;

@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { Post, PostCreate, PostUpdate } from '@/types/api';
+import { Post, PostCreate, PostUpdate, PaginatedPosts } from '@/types/api';
 
 export const usePosts = () => {
   const queryClient = useQueryClient();
@@ -8,9 +8,40 @@ export const usePosts = () => {
   const useGetPosts = () => useQuery<Post[]>({
     queryKey: ['posts'],
     queryFn: async () => {
-      const { data } = await api.get<Post[]>('/posts');
+      const { data } = await api.get<PaginatedPosts>('/posts', {
+        params: { skip: 0, limit: 100 },
+      });
+      return data.posts;
+    },
+  });
+
+  const POSTS_PER_PAGE = 10;
+
+  const useGetPostsInfinite = () => useInfiniteQuery({
+    queryKey: ['posts', 'infinite'],
+    queryFn: async ({ pageParam = 0 }) => {
+      const { data } = await api.get<PaginatedPosts>('/posts', {
+        params: { skip: pageParam, limit: POSTS_PER_PAGE },
+      });
       return data;
     },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.has_more) return undefined;
+      return lastPage.skip + lastPage.limit;
+    },
+  });
+
+
+  const useGetUserPosts = (userId: number) => useQuery<Post[]>({
+    queryKey: ['posts', 'user', userId],
+    queryFn: async () => {
+      const { data } = await api.get<PaginatedPosts>(`/users/${userId}/posts`, {
+        params: { skip: 0, limit: 100 },
+      });
+      return data.posts;
+    },
+    enabled: !isNaN(userId) && userId > 0,
   });
 
   const useGetPost = (id: number) => useQuery<Post>({
@@ -54,6 +85,8 @@ export const usePosts = () => {
 
   return {
     useGetPosts,
+    useGetPostsInfinite,
+    useGetUserPosts,
     useGetPost,
     useCreatePost,
     useUpdatePost,

@@ -1,7 +1,8 @@
-from fastapi import  HTTPException, status , APIRouter
+from fastapi import  HTTPException, status , APIRouter, Query
+from typing import Annotated
 
 ## models + schemas + database
-from schemas import PostCreate , PostResponse, PostUpdate 
+from schemas import PostCreate , PostResponse, PostUpdate , PaginatedPostResponse
 import models 
 from database import get_db 
 
@@ -9,7 +10,7 @@ from database import get_db
 from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 
 #Authorization
@@ -27,14 +28,35 @@ router = APIRouter()
 # ---------------------------------------------------------
 from sqlalchemy.orm import selectinload
 
-@router.get("", response_model=list[PostResponse])
-def get_posts(db: Annotated[Session, Depends(get_db)]):
+@router.get("", response_model=PaginatedPostResponse)
+def get_posts(  db: Annotated[Session, Depends(get_db)],
+                skip: Annotated[int, Query(ge=0)] = 0,
+                limit: Annotated[int, Query(ge=1, le=100)] = 10,):
+    
+    total_result = db.execute(
+        select(func.count()).select_from(models.Post)
+    )
+    total = total_result.scalar() or 0
+    
     result = db.execute(
         select(models.Post)
         .options(selectinload(models.Post.user))   # <-- eager load
         .order_by(models.Post.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+
     )
-    return result.scalars().all()
+    posts = result.scalars().all()
+    
+    has_more = (skip + len(posts)) < total
+    
+    return PaginatedPostResponse(
+    posts=[PostResponse.model_validate(post) for post in posts],
+    total=total,
+    skip=skip,
+    limit=limit,
+    has_more=has_more,
+)
 
 # ---------------------------------------------------------
 # GET /{id} — get a single post

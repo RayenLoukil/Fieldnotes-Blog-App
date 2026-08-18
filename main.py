@@ -17,8 +17,11 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="Fieldnotes API",
     description="A pure JSON Blog API for posting about tech and sharing knowledge",
-    version="1.0.0",
+    version="1.0.0"
 )
+
+
+    
 
 # ---------------------------------------------------------
 # CORS configuration (Allows React dev server to communicate)

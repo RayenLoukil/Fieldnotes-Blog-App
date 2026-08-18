@@ -6,8 +6,17 @@ import { Avatar } from '@/components/ui/Avatar';
 import { AlertCircle, Calendar, MessageSquare, Terminal } from 'lucide-react';
 
 export const FeedPage: React.FC = () => {
-  const { useGetPosts } = usePosts();
-  const { data: posts, isLoading, error } = useGetPosts();
+  const { useGetPostsInfinite } = usePosts();
+  const {
+    data,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useGetPostsInfinite();
+
+  const posts = data?.pages.flatMap((page) => page.posts) ?? [];
 
   if (isLoading) {
     return (
@@ -56,7 +65,7 @@ export const FeedPage: React.FC = () => {
         </Card>
       ) : (
         <div className="space-y-4">
-          {posts?.map((post) => (
+          {posts.map((post) => (
             <Card key={post.id} className="p-6">
               <article className="flex flex-col sm:flex-row items-start gap-4">
                 
@@ -100,6 +109,18 @@ export const FeedPage: React.FC = () => {
               </article>
             </Card>
           ))}
+
+          {hasNextPage && (
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="px-4 py-2 text-sm font-bold text-steel-500 hover:text-steel-600 border border-steel-200 dark:border-zinc-700 rounded-md hover:bg-steel-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              >
+                {isFetchingNextPage ? 'Loading...' : 'Load More Posts'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

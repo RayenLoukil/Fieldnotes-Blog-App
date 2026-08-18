@@ -25,9 +25,10 @@ export const AccountPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, logout, checkAuth } = useAuthStore();
   const { useUpdateUser, useDeleteUser, useUploadPicture } = useUsers();
-  const { useGetPosts } = usePosts();
+  const { useGetUserPosts } = usePosts();
 
-  const { data: posts } = useGetPosts();
+  const { data: myPosts = [] } = useGetUserPosts(currentUser!.id);
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Only runs if currentUser exists (guaranteed by ProtectedRoute)
@@ -64,8 +65,7 @@ export const AccountPage: React.FC = () => {
     },
   });
 
-  // My posts only — filtered client-side from the full posts list
-  const myPosts = posts?.filter((p) => p.user?.id === currentUser!.id) || [];
+
 
   const onProfileUpdate = (data: ProfileFormInput) => {
     updateMutation.mutate(data, {

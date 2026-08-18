@@ -46,4 +46,11 @@ class PostUpdate(BaseModel):
     title: str | None = Field( default=None, min_length=3, max_length=100)
     content: str | None = Field( default=None, min_length=10)
     
-    
+
+
+class PaginatedPostResponse(BaseModel):
+    posts :list[PostResponse] 
+    total:int
+    skip:int
+    limit:int
+    has_more:bool

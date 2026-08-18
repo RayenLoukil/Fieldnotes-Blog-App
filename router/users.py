@@ -1,7 +1,7 @@
-from fastapi import HTTPException, status, APIRouter
+from fastapi import HTTPException, status, APIRouter , Query
 
 ## models + schemas + database
-from schemas import  UserCreate, UserPrivate  , UserPublic , UserUpdate
+from schemas import  UserCreate, UserPrivate  , UserPublic , UserUpdate , PaginatedPostResponse
 import models 
 from database import get_db 
 
@@ -72,6 +72,44 @@ def get_user_by_id(id: int, db: Annotated[Session, Depends(get_db)]):
             detail="User not found"
         )
     return user
+
+
+
+
+@router.get("/{id}/posts" , response_model=PaginatedPostResponse)
+def get_user_posts(id: int,
+    db: Annotated[Session, Depends(get_db)],
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+):
+    from sqlalchemy.orm import selectinload
+    import models as m
+    
+    total_result = db.execute(
+        select(func.count()).select_from(m.Post).where(m.Post.id_user == id)
+    )
+    
+    total = total_result.scalar() or 0
+    
+    result = db.execute(select(m.Post)
+            .options(selectinload(m.Post.user))
+            .where(m.Post.id_user == id)
+            .order_by(m.Post.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+    )
+    posts = result.scalars().all()
+    
+    has_more = skip +len(posts) < total
+    
+    from schemas import PostResponse
+    return PaginatedPostResponse(
+        posts=[PostResponse.model_validate(post) for post in posts],
+        total=total,
+        skip=skip,
+        limit=limit,
+        has_more=has_more,     
+    )
 
 
 # ---------------------------------------------------------

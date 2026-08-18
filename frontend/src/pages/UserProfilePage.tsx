@@ -11,10 +11,10 @@ export const UserProfilePage: React.FC = () => {
   const userId = Number(id);
 
   const { useGetUser } = useUsers();
-  const { useGetPosts } = usePosts();
+  const { useGetUserPosts } = usePosts();
 
   const { data: user, isLoading: userLoading } = useGetUser(userId);
-  const { data: posts, isLoading: postsLoading } = useGetPosts();
+  const { data: userPosts = [], isLoading: postsLoading } = useGetUserPosts(userId);
 
   if (userLoading || postsLoading) {
     return <div className="animate-pulse bg-white dark:bg-zinc-900 p-6 rounded-lg h-64" />;
@@ -24,8 +24,7 @@ export const UserProfilePage: React.FC = () => {
     return <div className="text-center p-8">Author not found.</div>;
   }
 
-  // Filter all posts to only this author's — using nested user.id (not id_user)
-  const userPosts = posts?.filter((p) => p.user?.id === userId) || [];
+
 
   return (
     <div className="space-y-6">
