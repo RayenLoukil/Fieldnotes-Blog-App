@@ -1,17 +1,19 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase , sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase
+from config import settings
 
-DB_URL = "sqlite:///./fieldnotes.db"
+engine = create_async_engine(settings.database_url)
 
-engine = create_engine(
-    DB_URL,
-    connect_args={"check_same_thread": False},)
-
-SessionLocal  = sessionmaker(autocommit=False , bind=engine , autoflush=False )
+SessionLocal = async_sessionmaker(
+    bind=engine,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
+)
 
 class Base(DeclarativeBase):
     pass
 
-def get_db():
-    with SessionLocal() as db :
+async def get_db():
+    async with SessionLocal() as db:
         yield db

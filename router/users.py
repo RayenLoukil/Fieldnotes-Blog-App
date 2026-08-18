@@ -1,70 +1,64 @@
-from fastapi import HTTPException, status, APIRouter , Query
+from fastapi import HTTPException, status, APIRouter, Query
 
 ## models + schemas + database
-from schemas import  UserCreate, UserPrivate  , UserPublic , UserUpdate , PaginatedPostResponse
-import models 
-from database import get_db 
+from schemas import UserCreate, UserPrivate, UserPublic, UserUpdate, PaginatedPostResponse
+import models
+from database import get_db
 
 ## Dependency injection for database session
 from typing import Annotated
 from fastapi import Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 
 # Authentication
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import func, select
-from auth import hash_password, create_access_token, verify_password 
+from auth import hash_password, create_access_token, verify_password
 from config import settings
 from schemas import Token
 
+# Authorization
+from auth import CurrentUser
 
-# Authorization 
-from  auth import CurrentUser
+# Image upload
+from fastapi import UploadFile
+from PIL import UnidentifiedImageError
+from image_utils import delete_profile_image, process_profile_image
+
 #------------
 
-
 router = APIRouter()
-
-
 
 
 # ---------------------------------------------------------
 # GET all users
 # Public — no authentication required
-# Anyone can browse the author list
 # ---------------------------------------------------------
 @router.get("", response_model=list[UserPublic])
-def get_users(db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.User))
+async def get_users(db: Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(select(models.User))
     users = result.scalars().all()
     return users
 
 
 # ---------------------------------------------------------
-# GET /me  — must come before /{id} to avoid path conflict
+# GET /me — must come before /{id} to avoid path conflict
 # Protected — requires valid JWT
-# Returns the full private profile of whoever is logged in
-# Collapsed from ~20 lines to 3 using CurrentUser dependency
 # ---------------------------------------------------------
 @router.get("/me", response_model=UserPrivate)
 def get_me(current_user: CurrentUser):
-    # get_current_user already did all the work:
-    # extracted the token, verified it, fetched the user from the DB
-    # we just return what it gave us
     return current_user
 
 
 # ---------------------------------------------------------
 # GET /{id}
 # Public — no authentication required
-# Returns the public profile of any author
 # NOTE: defined AFTER /me to avoid "me" being treated as an integer ID
 # ---------------------------------------------------------
 @router.get("/{id}", response_model=UserPublic)
-def get_user_by_id(id: int, db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.User).where(models.User.id == id))
+async def get_user_by_id(id: int, db: Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(select(models.User).where(models.User.id == id))
     user = result.scalars().first()
     if not user:
         raise HTTPException(
@@ -74,57 +68,60 @@ def get_user_by_id(id: int, db: Annotated[Session, Depends(get_db)]):
     return user
 
 
-
-
-@router.get("/{id}/posts" , response_model=PaginatedPostResponse)
-def get_user_posts(id: int,
-    db: Annotated[Session, Depends(get_db)],
+# ---------------------------------------------------------
+# GET /{id}/posts
+# Public — no authentication required
+# ---------------------------------------------------------
+@router.get("/{id}/posts", response_model=PaginatedPostResponse)
+async def get_user_posts(
+    id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 10,
 ):
     from sqlalchemy.orm import selectinload
     import models as m
-    
-    total_result = db.execute(
+    from schemas import PostResponse
+
+    total_result = await db.execute(
         select(func.count()).select_from(m.Post).where(m.Post.id_user == id)
     )
-    
     total = total_result.scalar() or 0
-    
-    result = db.execute(select(m.Post)
-            .options(selectinload(m.Post.user))
-            .where(m.Post.id_user == id)
-            .order_by(m.Post.created_at.desc())
-            .offset(skip)
-            .limit(limit)
+
+    result = await db.execute(
+        select(m.Post)
+        .options(selectinload(m.Post.user))
+        .where(m.Post.id_user == id)
+        .order_by(m.Post.created_at.desc())
+        .offset(skip)
+        .limit(limit)
     )
     posts = result.scalars().all()
-    
-    has_more = skip +len(posts) < total
-    
-    from schemas import PostResponse
+
+    has_more = skip + len(posts) < total
+
     return PaginatedPostResponse(
         posts=[PostResponse.model_validate(post) for post in posts],
         total=total,
         skip=skip,
         limit=limit,
-        has_more=has_more,     
+        has_more=has_more,
     )
 
 
 # ---------------------------------------------------------
-# POST  — register a new user
-# Public — no authentication required (you can't log in before registering)
-# Returns UserPrivate so the new user sees their own email
+# POST — register a new user
+# Public — no authentication required
 # ---------------------------------------------------------
 @router.post("", response_model=UserPrivate, status_code=status.HTTP_201_CREATED)
-def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
-    existing = db.execute(
+async def create_user(user: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(
         select(models.User).where(
             (func.lower(models.User.username) == user.username.lower())
             | (func.lower(models.User.email) == user.email.lower())
         )
-    ).scalars().first()
+    )
+    existing = result.scalars().first()
 
     if existing:
         raise HTTPException(
@@ -138,32 +135,27 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
         password_hash=hash_password(user.password),
     )
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    await db.commit()
+    await db.refresh(new_user)
     return new_user
 
 
 # ---------------------------------------------------------
 # POST /token — login
 # Public — this IS the authentication endpoint
-# Accepts form-urlencoded data (OAuth2PasswordRequestForm)
-# Returns a JWT access token on success
 # ---------------------------------------------------------
 @router.post("/token", response_model=Token)
-def login(
+async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    # OAuth2PasswordRequestForm uses "username" field — we treat it as email
-    result = db.execute(
+    result = await db.execute(
         select(models.User).where(
             func.lower(models.User.email) == form_data.username.lower()
         )
     )
     user = result.scalars().first()
 
-    # Deliberately identical error for wrong email AND wrong password
-    # Never reveal which one was incorrect — prevents account enumeration
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -180,26 +172,21 @@ def login(
 # ---------------------------------------------------------
 # PATCH /{id} — update a user's own profile
 # Protected — requires valid JWT
-# Ownership check — you can only update your own account
-# Returns UserPrivate so the user sees their updated email
 # ---------------------------------------------------------
 @router.patch("/{id}", response_model=UserPrivate)
-def update_user(
+async def update_user(
     id: int,
     user_update: UserUpdate,
     current_user: CurrentUser,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    # Ownership check
-    # 401 = not logged in at all
-    # 403 = logged in but not the owner of this resource
     if id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update this user"
         )
 
-    result = db.execute(select(models.User).where(models.User.id == id))
+    result = await db.execute(select(models.User).where(models.User.id == id))
     user = result.scalars().first()
     if not user:
         raise HTTPException(
@@ -208,24 +195,24 @@ def update_user(
         )
 
     if user_update.username is not None and user_update.username.lower() != user.username.lower():
-        existing = db.execute(
+        existing_result = await db.execute(
             select(models.User).where(
                 func.lower(models.User.username) == user_update.username.lower()
             )
-        ).scalars().first()
-        if existing:
+        )
+        if existing_result.scalars().first():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username already exists"
             )
 
     if user_update.email is not None and user_update.email.lower() != user.email.lower():
-        existing = db.execute(
+        existing_result = await db.execute(
             select(models.User).where(
                 func.lower(models.User.email) == user_update.email.lower()
             )
-        ).scalars().first()
-        if existing:
+        )
+        if existing_result.scalars().first():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already exists"
@@ -237,31 +224,28 @@ def update_user(
             value = value.lower()
         setattr(user, field, value)
 
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
 # ---------------------------------------------------------
 # DELETE /{id} — delete a user's own account
 # Protected — requires valid JWT
-# Ownership check — you can only delete your own account
-# Cascade in models.py handles deleting all their posts too
 # ---------------------------------------------------------
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(
+async def delete_user(
     id: int,
     current_user: CurrentUser,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    # Ownership check
     if id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this user"
         )
 
-    result = db.execute(select(models.User).where(models.User.id == id))
+    result = await db.execute(select(models.User).where(models.User.id == id))
     user = result.scalars().first()
     if not user:
         raise HTTPException(
@@ -269,25 +253,26 @@ def delete_user(
             detail="User not found"
         )
 
-    db.delete(user)
-    db.commit()
-    
-    
-    
-from fastapi import UploadFile
-from PIL import UnidentifiedImageError
-from image_utils import delete_profile_image, process_profile_image
-from config import settings
+    await db.delete(user)
+    await db.commit()
 
+
+# ---------------------------------------------------------
+# PATCH /{id}/picture — upload profile picture
+# Protected — requires valid JWT
+# ---------------------------------------------------------
 @router.patch("/{id}/picture", response_model=UserPrivate)
-def upload_profile_picture(
+async def upload_profile_picture(
     id: int,
     file: UploadFile,
     current_user: CurrentUser,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     if current_user.id != id:
-        raise HTTPException(status_code=403, detail="Not authorized to update this user's picture")
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to update this user's picture"
+        )
 
     content = file.file.read()
     if len(content) > settings.max_upload_size_bytes:
@@ -303,8 +288,8 @@ def upload_profile_picture(
 
     old_filename = current_user.image_file
     current_user.image_file = new_filename
-    db.commit()
-    db.refresh(current_user)
+    await db.commit()
+    await db.refresh(current_user)
 
     if old_filename:
         delete_profile_image(old_filename)

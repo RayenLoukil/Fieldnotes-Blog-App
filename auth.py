@@ -8,7 +8,7 @@ from config import settings
 from typing import Annotated
 from fastapi import Depends, HTTPException, status 
 from sqlalchemy import select
-from sqlalchemy.orm import Session 
+from sqlalchemy.ext.asyncio import AsyncSession
 import models 
 from database import get_db
 
@@ -50,9 +50,9 @@ def verify_access_token(token: str) -> str | None:
     
 # get current user def
 
-def get_current_user(
+async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    db: Annotated[Session, Depends(get_db)],) -> models.User:
+    db: Annotated[AsyncSession, Depends(get_db)],) -> models.User:
     
     user_id = verify_access_token(token)
 
@@ -72,9 +72,10 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user = db.execute(
+    result = await db.execute(
         select(models.User).where(models.User.id == user_id)
-    ).scalars().first()
+    )
+    user = result.scalars().first()
 
     if user is None:
         raise HTTPException(

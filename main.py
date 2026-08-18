@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -5,23 +6,25 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # database
-from database import engine, Base
+from database import engine
 
 # routers
-from router import posts, users  
+from router import posts, users
 
-## Create the database tables
-Base.metadata.create_all(bind=engine)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await engine.dispose()
+
+## Initialize the FastAPI app
 ## Initialize the FastAPI app
 app = FastAPI(
     title="Fieldnotes API",
     description="A pure JSON Blog API for posting about tech and sharing knowledge",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
-
-
-    
 
 # ---------------------------------------------------------
 # CORS configuration (Allows React dev server to communicate)
