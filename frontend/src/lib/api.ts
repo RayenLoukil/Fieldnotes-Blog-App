@@ -3,6 +3,11 @@ import { useAuthStore } from '@/store/authStore';
 
 export const API_ORIGIN = 'http://localhost:8000';
 
+export const getImageUrl = (path: string): string => {
+  if (path.startsWith('http')) return path;
+  return `${API_ORIGIN}${path}`;
+};
+
 export const api = axios.create({
   baseURL: `${API_ORIGIN}/api`,
 });

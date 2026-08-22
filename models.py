@@ -3,6 +3,7 @@ from sqlalchemy import Integer , String , Text , DateTime, ForeignKey
 from sqlalchemy.orm import Mapped , mapped_column, relationship
 from database import Base
 from datetime import datetime, UTC
+from config import settings
 
 class Post(Base):
     __tablename__ = "posts"
@@ -29,7 +30,19 @@ class User(Base):
     @property
     def image_path(self) -> str:
         if self.image_file:
-            return f"/media/profile_pics/{self.image_file}"
+            if settings.s3_endpoint_url:
+                # MinIO / local S3-compatible: path-style URL
+                return (
+                    f"{settings.s3_endpoint_url}"
+                    f"/{settings.s3_bucket_name}"
+                    f"/profile_pics/{self.image_file}"
+                )
+            # Real AWS S3: virtual-hosted style URL
+            return (
+                f"https://{settings.s3_bucket_name}"
+                f".s3.{settings.s3_region}"
+                f".amazonaws.com/profile_pics/{self.image_file}"
+            )
         return "/static/profile_pics/default.jpg"
 
     

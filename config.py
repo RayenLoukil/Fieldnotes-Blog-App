@@ -11,5 +11,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     
     max_upload_size_bytes: int = 5 * 1024 * 1024
+
+    s3_bucket_name: str
+    s3_region: str = "us-east-1"
+    s3_access_key_id: SecretStr | None = None
+    s3_secret_access_key: SecretStr | None = None
+    s3_endpoint_url: str | None = None
+
     
 settings = Settings() #load settings from .env file

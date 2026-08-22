@@ -24,7 +24,8 @@ from auth import CurrentUser
 # Image upload
 from fastapi import UploadFile
 from PIL import UnidentifiedImageError
-from image_utils import delete_profile_image, process_profile_image
+from botocore.exceptions import ClientError
+from image_utils import delete_profile_image, process_profile_image, upload_profile_image
 
 #------------
 
@@ -253,8 +254,13 @@ async def delete_user(
             detail="User not found"
         )
 
+    old_filename = user.image_file
+
     await db.delete(user)
     await db.commit()
+
+    if old_filename:
+        await delete_profile_image(old_filename)
 
 
 # ---------------------------------------------------------
@@ -274,7 +280,7 @@ async def upload_profile_picture(
             detail="Not authorized to update this user's picture"
         )
 
-    content = file.file.read()
+    content = await file.read()
     if len(content) > settings.max_upload_size_bytes:
         raise HTTPException(
             status_code=400,
@@ -282,9 +288,17 @@ async def upload_profile_picture(
         )
 
     try:
-        new_filename = process_profile_image(content)
+        processed_bytes, new_filename = process_profile_image(content)
     except UnidentifiedImageError as err:
         raise HTTPException(status_code=400, detail="Invalid image file.") from err
+
+    try:
+        await upload_profile_image(processed_bytes, new_filename)
+    except ClientError as err:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to upload image."
+        ) from err
 
     old_filename = current_user.image_file
     current_user.image_file = new_filename
@@ -292,5 +306,5 @@ async def upload_profile_picture(
     await db.refresh(current_user)
 
     if old_filename:
-        delete_profile_image(old_filename)
+        await delete_profile_image(old_filename)
     return current_user

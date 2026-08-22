@@ -12,7 +12,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Link } from 'react-router-dom';
 import { User, Settings, Trash, Terminal, Calendar, Mail, Edit, Camera } from 'lucide-react';
-import { API_ORIGIN } from '@/lib/api';
+import { getImageUrl } from '@/lib/api';
 
 const profileUpdateSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3').max(50),
@@ -98,7 +98,7 @@ export const AccountPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
             <div className="w-16 h-16 rounded-full overflow-hidden shadow-md border-2 border-white dark:border-zinc-800">
               <img
-                src={`${API_ORIGIN}${currentUser.image_path}`}
+                src={getImageUrl(currentUser.image_path)}
                 alt={currentUser.username}
                 className="w-full h-full object-cover"
               />
@@ -194,7 +194,7 @@ export const AccountPage: React.FC = () => {
             disabled={uploadMutation.isPending}
           >
             <img
-              src={`${API_ORIGIN}${currentUser!.image_path}`}
+              src={getImageUrl(currentUser!.image_path)}
               alt={currentUser!.username}
               className="w-full h-full object-cover"
             />

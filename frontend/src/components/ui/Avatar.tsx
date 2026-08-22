@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { API_ORIGIN } from '@/lib/api';
+import { getImageUrl } from '@/lib/api';
 
 interface AvatarProps {
   username: string;
@@ -25,7 +25,7 @@ export const Avatar: React.FC<AvatarProps> = ({ username, imagePath, size = 'md'
     >
       {showImage ? (
         <img
-          src={`${API_ORIGIN}${imagePath}`}
+          src={getImageUrl(imagePath)}
           alt={username}
           className="w-full h-full object-cover"
           onError={() => setFailed(true)}
