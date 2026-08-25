@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     s3_secret_access_key: SecretStr | None = None
     s3_endpoint_url: str | None = None
     
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origins: str = "https://fieldnotes-blog-app8.pages.dev,http://localhost:5173"
 
         
 settings = Settings() #load settings from .env file
