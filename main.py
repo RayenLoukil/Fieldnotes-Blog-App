@@ -1,12 +1,16 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, status, Request
+from fastapi import FastAPI, status, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Annotated
+from config import settings
 
 # database
-from database import engine
+from database import engine, get_db
 
 # routers
 from router import posts, users
@@ -29,10 +33,7 @@ app = FastAPI(
 # ---------------------------------------------------------
 # CORS configuration (Allows React dev server to communicate)
 # ---------------------------------------------------------
-origins = [
-    "http://localhost:5173",  # Vite Dev Server
-    "http://127.0.0.1:5173",
-]
+origins = settings.cors_origins.split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,7 +53,14 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/api/health", tags=["System"])
-def health_check():
+async def health_check(db: Annotated[AsyncSession, Depends(get_db)]):
+    try:
+        await db.execute(text("SELECT 1"))
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database unreachable"
+        )
     return {"status": "healthy", "message": "Fieldnotes API is fully operational"}
 
 

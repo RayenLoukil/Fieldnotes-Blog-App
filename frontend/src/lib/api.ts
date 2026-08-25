@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
-export const API_ORIGIN = 'http://localhost:8000';
+export const API_ORIGIN = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const getImageUrl = (path: string): string => {
   if (path.startsWith('http')) return path;
